@@ -1,5 +1,7 @@
 using CurrencyExchange.API;
+using CurrencyExchange.Infrastructure.DbContexts;
 using Microsoft.AspNetCore;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 public class Program
@@ -14,12 +16,30 @@ public class Program
         try
         {
             Log.Information("Starting up the app...");
-            var server = BuildWebHost(args);
-            server.Run();
+            var host = BuildWebHost(args);
+
+            // Run migrations
+            using (var scope = host.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                try
+                {
+                    var context = services.GetRequiredService<BaseDbContext>();
+                    context.Database.Migrate();
+                    Log.Information("Migrations applied successfully");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Migration error");
+                    throw;
+                }
+            }
+
+            host.Run();
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "The application failed to start correctly");
+            Log.Fatal(ex, "Application startup failed");
         }
         finally
         {

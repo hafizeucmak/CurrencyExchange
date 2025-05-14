@@ -3,7 +3,7 @@ using CurrencyExchange.Application.DTOs.Auths;
 using CurrencyExchange.Application.Interfaces;
 using CurrencyExchange.Domain.Constants;
 using CurrencyExchange.Domain.Entites;
-using CurrencyExchange.Infrastructure.DbContext;
+using CurrencyExchange.Infrastructure.DbContexts;
 using CurrencyExchange.Infrastructure.Repositories;
 using FluentValidation;
 using MediatR;

@@ -1,22 +1,26 @@
-﻿using CurrencyExchange.API.Extensions;
+﻿using AspNetCoreRateLimit;
+using CurrencyExchange.API.Extensions;
+using CurrencyExchange.API.Filters;
+using CurrencyExchange.API.Middlewares;
+using CurrencyExchange.API.ResiliencePolicies;
 using CurrencyExchange.Application.Abstractions.Providers;
 using CurrencyExchange.Application.CQRS.Queries.Currency;
+using CurrencyExchange.Application.Interfaces;
+using CurrencyExchange.Application.Services;
+using CurrencyExchange.Domain.Entites;
 using CurrencyExchange.Infrastructure.Configurations;
-using CurrencyExchange.Infrastructure.DbContext;
+using CurrencyExchange.Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Serilog.Extensions.Logging;
 using Serilog;
+using Serilog.Extensions.Logging;
 using Swashbuckle.AspNetCore.SwaggerUI;
+using System.Buffers.Text;
+using System.Security.Claims;
 using System.Text;
-using CurrencyExchange.API.Middlewares;
-using Microsoft.Extensions.Options;
-using CurrencyExchange.API.Filters;
-using CurrencyExchange.Application.Interfaces;
-using CurrencyExchange.API.ResiliencePolicies;
-using AspNetCoreRateLimit;
-using CurrencyExchange.Application.Services;
 
 namespace CurrencyExchange.API
 {
@@ -41,7 +45,7 @@ namespace CurrencyExchange.API
             var configurationOptions = Configuration.GetSection("AppSettings").Get<ConfigurationOptions>();
             var ipRateLimitOptions = Configuration.GetSection("IpRateLimiting").Get<IpRateLimitOptions>();
 
-          
+
             if (configurationOptions?.JwtSettings == null)
             {
                 throw new InvalidOperationException("JwtSettings configuration is missing or invalid.");
@@ -73,6 +77,11 @@ namespace CurrencyExchange.API
             services.ConfigureAppSettings(Configuration);
             services.AddScoped<ITokenService, TokenService>();
 
+      
+            services.AddIdentityCore<User>().AddRoles<IdentityRole>();
+
+            services.AddScoped<IUserClaimsPrincipalFactory<User>, UserClaimsPrincipalFactory<User, IdentityRole>>();
+
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     .AddJwtBearer(options =>
                     {
@@ -84,11 +93,42 @@ namespace CurrencyExchange.API
                             ValidateIssuerSigningKey = true,
                             ValidIssuer = configurationOptions.JwtSettings.ValidIssuer,
                             ValidAudience = configurationOptions.JwtSettings.ValidAudience,
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configurationOptions.JwtSettings.SecretKey))
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configurationOptions.JwtSettings.SecretKey)),
+                            // Fix this to match what's in your token
+                            RoleClaimType = ClaimTypes.Role // Change from "role" to ClaimTypes.Role
+                        };
+
+                        // Add debugging to see what's happening
+                        options.Events = new JwtBearerEvents
+                        {
+                            OnTokenValidated = context =>
+                            {
+                                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
+                                logger.LogInformation("Token validated successfully!");
+
+                                // Log all claims for debugging
+                                foreach (var claim in context.Principal.Claims)
+                                {
+                                    logger.LogInformation($"Claim type: {claim.Type}, Value: {claim.Value}");
+                                }
+
+                                // Check if user is in Admin role
+                                var isAdmin = context.Principal.IsInRole("Admin");
+                                logger.LogInformation($"Is user in Admin role: {isAdmin}");
+
+                                return Task.CompletedTask;
+                            },
+                            OnAuthenticationFailed = context =>
+                            {
+                                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
+                                logger.LogError($"Authentication failed: {context.Exception.Message}");
+                                return Task.CompletedTask;
+                            }
                         };
                     });
 
-           services.AddAuthorization(options =>
+            // Then configure authorization
+            services.AddAuthorization(options =>
             {
                 options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
                 options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
@@ -100,25 +140,30 @@ namespace CurrencyExchange.API
 
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
-                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                    Description = "Please insert JWT with Bearer. Example: \"Bearer {token}\"",
                     Name = "Authorization",
                     In = ParameterLocation.Header,
                     Type = SecuritySchemeType.ApiKey,
-                    Scheme = "Bearer"
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT"
                 });
 
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement()
                 {
                     {
-                        new OpenApiSecurityScheme
+                      new OpenApiSecurityScheme
+                      {
+                        Reference = new OpenApiReference
                         {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
+                          Type = ReferenceType.SecurityScheme,
+                          Id = "Bearer"
                         },
-                        Array.Empty<string>()
+                        Scheme = "oauth2",
+                        Name = "Bearer",
+                        In = ParameterLocation.Header,
+
+                      },
+                      new List<string>()
                     }
                 });
             });
@@ -164,9 +209,11 @@ namespace CurrencyExchange.API
             }
 
             app.UseRouting();
-            app.UseIpRateLimiting();
-            app.UseAuthorization();
+
             app.UseAuthentication();
+            app.UseAuthorization(); 
+
+            app.UseIpRateLimiting();
             app.UseMiddleware<RequestResponseLoggingMiddleware>();
             app.UseStaticFiles();
             app.UseEndpoints(endpoints =>

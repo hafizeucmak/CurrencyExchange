@@ -1,6 +1,6 @@
 ﻿using CurrencyExchange.Domain.Constants;
 using CurrencyExchange.Domain.Entites;
-using CurrencyExchange.Infrastructure.DbContext;
+using CurrencyExchange.Infrastructure.DbContexts;
 using CurrencyExchange.Infrastructure.Repositories;
 using FluentValidation;
 using MediatR;
@@ -89,6 +89,8 @@ namespace CurrencyExchange.Application.CQRS.Commands.Users
             var user = new User(command.FirstName, command.LastName, command.Email, userRole.Id, hashedPassword, userRole);
 
             await _genericWriteRepository.AddAsync(user, cancellationToken);
+
+            _genericWriteRepository.CommitTransaction();
 
             return Unit.Value;
         }

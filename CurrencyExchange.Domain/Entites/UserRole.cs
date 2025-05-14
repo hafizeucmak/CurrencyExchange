@@ -2,6 +2,8 @@
 {
     public class UserRole : DomainEntity
     {
+        public UserRole() {}
+
         public UserRole(string roleName, string description)
         {
             RoleName = roleName;

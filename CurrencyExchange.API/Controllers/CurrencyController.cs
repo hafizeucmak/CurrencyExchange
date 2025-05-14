@@ -25,7 +25,7 @@ namespace CurrencyExchange.API.Controllers
         /// <param name="cancellationToken">Cancellation token for the request.</param>
         /// <returns>The converted currency amount and related information.</returns>
         [HttpGet("convertCurrency")]
-        [Authorize]
+        [Authorize(Policy = "UserOnly")]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(CurrencyConversionOutputDto))]
         public async Task<IActionResult> ConvertCurrency([FromQuery] string fromCurrency, [FromQuery] string toCurrency, CancellationToken cancellationToken)
         {
@@ -39,6 +39,7 @@ namespace CurrencyExchange.API.Controllers
         /// <param name="cancellationToken">Cancellation token for the request.</param>
         /// <returns>The latest exchange rates for the given base currency.</returns>
         [HttpGet("getLatestExchangeRates")]
+        [Authorize(Policy = "AdminOnly")]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(LatestExchangeRatesOutputDto))]
         public async Task<IActionResult> GetLatestExchangeRates([FromQuery] string baseCurrency, CancellationToken cancellationToken)
         {

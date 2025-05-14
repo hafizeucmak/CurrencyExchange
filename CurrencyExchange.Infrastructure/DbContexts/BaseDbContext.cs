@@ -3,13 +3,14 @@
 using CurrencyExchange.Domain.Constants;
 using CurrencyExchange.Domain.Entites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
-using System.Data;
 using System.Linq.Expressions;
 
-namespace CurrencyExchange.Infrastructure.DbContext
+
+namespace CurrencyExchange.Infrastructure.DbContexts
 {
-    public class BaseDbContext : Microsoft.EntityFrameworkCore.DbContext
+    public class BaseDbContext : DbContext
     {
         public BaseDbContext(DbContextOptions<BaseDbContext> options) : base(options)
         {
@@ -24,6 +25,7 @@ namespace CurrencyExchange.Infrastructure.DbContext
 
         }
         public virtual DbSet<User> Users { get; set; }
+        public virtual DbSet<UserRole> UserRoles { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfigurationsFromAssembly(this.GetType().Assembly);
@@ -34,11 +36,6 @@ namespace CurrencyExchange.Infrastructure.DbContext
             AddGlobalQueryFilters(modelBuilder, entityTypes);
 
             base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<UserRole>().HasData(
-                new UserRole(roleName  : "User", description : "Normal User"),
-                new UserRole(roleName  : "Admin", description : "Admin User")
-            );
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

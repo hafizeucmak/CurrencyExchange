@@ -24,10 +24,10 @@ namespace CurrencyExchange.Application.Services
             var claims = new List<Claim>
                         {
                             new Claim("email", email),
-                            new Claim("clientId", clientId)
+                            new Claim("role", userRole),
+                            new Claim("clientId", clientId),
+                            new Claim(ClaimTypes.Role, userRole),
                         };
-
-            claims.Add(new Claim(ClaimTypes.Role, userRole));
 
             var credentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature);
 
