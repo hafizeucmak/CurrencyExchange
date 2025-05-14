@@ -29,7 +29,7 @@ namespace CurrencyExchange.API.Middlewares
 
             var clientId = context.User.Claims.FirstOrDefault(c => c.Type == "clientId")?.Value ?? "anonymous";
 
-            _logger.LogInformation("Request from {ClientIP}, ClientId: {ClientId}, {Method} {Endpoint}, StatusCode: {StatusCode}, ResponseTime: {ResponseTime}ms",
+            _logger.LogInformation("lOG : Request from {ClientIP}, ClientId: {ClientId}, {Method} {Endpoint}, StatusCode: {StatusCode}, ResponseTime: {ResponseTime}ms",
                 clientIp, clientId, method, endpoint, statusCode, responseTime);
         }
     }
