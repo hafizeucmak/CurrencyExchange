@@ -86,7 +86,7 @@ namespace CurrencyExchange.Application.CQRS.Commands.Users
             
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(command.Password);
 
-            var user = new User(command.FirstName, command.LastName, command.Email, userRole.Id, hashedPassword);
+            var user = new User(command.FirstName, command.LastName, command.Email, userRole.Id, hashedPassword, userRole);
 
             await _genericWriteRepository.AddAsync(user, cancellationToken);
 

@@ -11,6 +11,12 @@ using Serilog;
 using Swashbuckle.AspNetCore.SwaggerUI;
 using System.Text;
 using CurrencyExchange.API.Middlewares;
+using Microsoft.Extensions.Options;
+using CurrencyExchange.API.Filters;
+using CurrencyExchange.Application.Interfaces;
+using CurrencyExchange.API.ResiliencePolicies;
+using AspNetCoreRateLimit;
+using CurrencyExchange.Application.Services;
 
 namespace CurrencyExchange.API
 {
@@ -33,19 +39,39 @@ namespace CurrencyExchange.API
         public void ConfigureServices(IServiceCollection services)
         {
             var configurationOptions = Configuration.GetSection("AppSettings").Get<ConfigurationOptions>();
+            var ipRateLimitOptions = Configuration.GetSection("IpRateLimiting").Get<IpRateLimitOptions>();
 
+          
             if (configurationOptions?.JwtSettings == null)
             {
                 throw new InvalidOperationException("JwtSettings configuration is missing or invalid.");
             }
 
+            services.AddMemoryCache();
+            services.AddInMemoryRateLimiting();
+            services.Configure<IpRateLimitOptions>(Configuration.GetSection("IpRateLimiting"));
+            services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
+            services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
+            services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
+            services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
             services.AddControllers();
             services.AddEndpointsApiExplorer();
-            services.AddMemoryCache();
+            services.Configure<IpRateLimitOptions>(Configuration.GetSection("IpRateLimiting"));
             services.AddRepositories();
             services.AddScoped<ICurrencyProviderFactory, CurrencyProviderFactory>();
-            services.AddScoped<ICurrencyProvider, IFrankFurtherCurrencyProvider>();
+            services.AddScoped<ICurrencyProvider, FrankFurtherCurrencyProvider>();
+            services.AddHttpClient<FrankFurtherCurrencyProvider>();
+            services.AddHttpClient<FrankFurtherCurrencyProvider>((sp, client) =>
+            {
+                var options = sp.GetRequiredService<IOptions<ConfigurationOptions>>().Value;
+                client.BaseAddress = new Uri(configurationOptions.CurrencyProviders.FrankFurter.BaseUrl);
+            })
+            .AddPolicyHandler(PollyPolicies.GetRetryPolicy())
+            .AddPolicyHandler(PollyPolicies.GetCircuitBreakerPolicy()); ;
+            services.AddSingleton<ICurrencyValidator, CurrencyValidator>();
             services.AddValidators();
+            services.ConfigureAppSettings(Configuration);
+            services.AddScoped<ITokenService, TokenService>();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     .AddJwtBearer(options =>
@@ -116,7 +142,7 @@ namespace CurrencyExchange.API
                 services.AddLogging(config => config.AddConsole());
             }
 
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetCurrencyRateQuery).Assembly));
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetConvertedCurrencyRate).Assembly));
         }
 
         private void ConfigureSwaggerUI(SwaggerUIOptions options)
@@ -138,11 +164,11 @@ namespace CurrencyExchange.API
             }
 
             app.UseRouting();
-
+            app.UseIpRateLimiting();
             app.UseAuthorization();
             app.UseAuthentication();
             app.UseMiddleware<RequestResponseLoggingMiddleware>();
-
+            app.UseStaticFiles();
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();

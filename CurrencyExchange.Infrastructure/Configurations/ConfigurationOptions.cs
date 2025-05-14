@@ -3,6 +3,9 @@
     public class ConfigurationOptions
     {
         public required JwtSettingsOptions JwtSettings { get; set; }
+
         public required DbConnectionOptions DbConnectionOptions { get; set; }
+
+        public required CurrencyProviderOptions CurrencyProviders { get; set; }
     }
 }

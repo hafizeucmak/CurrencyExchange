@@ -3,23 +3,15 @@ using FluentValidation;
 
 namespace CurrencyExchange.Domain.Entites
 {
-    public class User  : DomainEntity
+    public class User(string firstName, string lastName, string email, int userRoleId, string hashedPassword, UserRole userRole) : DomainEntity
     {
-        public User(string firstName, string lastName, string email, int userRoleId, string hashedPassword)
-        {
-            FirstName = firstName;
-            LastName = lastName;
-            Email = email;
-            HashedPassword = hashedPassword;
-            UserRoleId = userRoleId;
-        }
-
-        public string FirstName { get; private set; }
-        public string LastName { get; private set; }
-        public string Email { get; private set; }
-        public string HashedPassword { get; private set; }
-        public virtual UserRole UserRole { get; private set; }
-        public int UserRoleId { get; private set; }
+        public Guid ClientId { get; private set; } = Guid.NewGuid();
+        public string FirstName { get; private set; } = firstName;
+        public string LastName { get; private set; } = lastName;
+        public string Email { get; private set; } = email;
+        public string HashedPassword { get; private set; } = hashedPassword;
+        public virtual UserRole UserRole { get; private set; } = userRole;
+        public int UserRoleId { get; private set; } = userRoleId;
     }
 
     public class ProductValidator : AbstractValidator<User>

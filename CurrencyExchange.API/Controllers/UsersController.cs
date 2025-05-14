@@ -1,5 +1,4 @@
 using CurrencyExchange.Application.CQRS.Commands.Users;
-using CurrencyExchange.Application.CQRS.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -20,8 +19,7 @@ namespace CurrencyExchange.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.NoContent)]
         public async Task<IActionResult> CreateUser(CreateUserCommand userCommand, CancellationToken cancellationToken)
         {
-            await _mediator.Send(userCommand, cancellationToken);
-            return NoContent();
+            return Ok(await _mediator.Send(userCommand, cancellationToken));
         }
     }
 }
