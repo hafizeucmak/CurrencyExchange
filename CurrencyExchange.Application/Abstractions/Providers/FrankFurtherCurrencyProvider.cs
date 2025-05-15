@@ -29,7 +29,7 @@ namespace CurrencyExchange.Application.Abstractions.Providers
             return rate;
         }
 
-        public async Task<ExchangeRatesDto> GetLatestRatesAsync(string baseCurrency)
+        public virtual async Task<ExchangeRatesDto> GetLatestRatesAsync(string baseCurrency)
         {
             var url = $"/latest?base={baseCurrency}";
             var response = await _httpClient.GetAsync(url);
