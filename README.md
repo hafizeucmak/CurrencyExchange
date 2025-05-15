@@ -42,6 +42,9 @@ A secure, scalable, and well-architected .NET Web API for retrieving and convert
 
 - 🌐 **Swagger Integration**  
   Full support for testing all endpoints via Swagger UI. JWT bearer token authentication supported through Swagger interface.
+  
+- 🔁 **Unit Tests**  
+  Implemented unit test with using xUnit
 
 ---
 
